@@ -1,0 +1,128 @@
+name: Debian Package + apt repo
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential ca-certificates git \
+            dpkg-dev debhelper dh-dkms python3
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Trust repo directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Set changelog version from git
+        run: python3 packaging/deb-version.py --write-changelog
+
+      - name: Build package
+        run: dpkg-buildpackage -b -us -uc
+
+      - name: Collect debs
+        run: |
+          mkdir -p built-debs
+          cp ../*.deb built-debs/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debs
+          path: built-debs/
+
+  publish-apt:
+    needs: build-deb
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: debs
+          path: apt-repo/
+
+      - name: Generate apt repo metadata
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils
+          cd apt-repo
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k Packages
+
+          cat > Release <<EOF
+          Origin: dtbocfg
+          Label: dtbocfg
+          Suite: stable
+          Codename: trixie
+          Architectures: all
+          Components: main
+          Description: dtbocfg apt repository (Device Tree overlay ConfigFS DKMS module)
+          EOF
+          sed -i 's/^          //' Release
+
+          apt-ftparchive release . >> Release
+
+      - name: Sign repo
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        if: env.GPG_PRIVATE_KEY != ''
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          cd apt-repo
+          gpg --batch --yes --armor --detach-sign --output Release.gpg Release
+          gpg --batch --yes --armor --clearsign --output InRelease Release
+          gpg --batch --yes --armor --export > dtbocfg.gpg
+
+      - name: Create index page
+        run: |
+          cat > apt-repo/index.html <<'HTMLEOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>dtbocfg apt repository</title></head>
+          <body>
+          <h1>dtbocfg apt repository</h1>
+          <p>DKMS package of the dtbocfg kernel module (by Ichiro Kawazome): a
+          ConfigFS interface for applying Device Tree overlays at runtime from
+          userspace, under /sys/kernel/config/device-tree/overlays/. Same
+          interface as the never-upstreamed CONFIG_OF_CONFIGFS, with no kernel
+          patch -- it only needs CONFIG_OF_OVERLAY=y in the running kernel.</p>
+          <h2>Setup</h2>
+          <pre>
+          # Download signing key
+          curl -fsSL https://mithro.github.io/dtbocfg/dtbocfg.gpg \
+            | sudo tee /etc/apt/keyrings/dtbocfg.gpg > /dev/null
+
+          # Add apt source
+          echo "deb [signed-by=/etc/apt/keyrings/dtbocfg.gpg] https://mithro.github.io/dtbocfg/ ./" \
+            | sudo tee /etc/apt/sources.list.d/dtbocfg.list
+
+          # Install
+          sudo apt update
+          sudo apt install dtbocfg-dkms
+          </pre>
+          </body>
+          </html>
+          HTMLEOF
+          sed -i 's/^          //' apt-repo/index.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apt-repo/
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
