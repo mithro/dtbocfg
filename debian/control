@@ -1,0 +1,24 @@
+Source: dtbocfg
+Section: kernel
+Priority: optional
+Maintainer: Tim 'mithro' Ansell <me@mith.ro>
+Build-Depends: debhelper-compat (= 13), dh-sequence-dkms
+Standards-Version: 4.7.0
+Homepage: https://github.com/ikwzm/dtbocfg
+Rules-Requires-Root: no
+
+Package: dtbocfg-dkms
+Architecture: all
+Depends: ${misc:Depends}, dkms
+Description: Device Tree overlay ConfigFS userspace interface (DKMS)
+ Out-of-tree Linux kernel module (dtbocfg, by Ichiro Kawazome) that exposes a
+ ConfigFS interface for applying and removing Device Tree overlays at runtime
+ from userspace, under /sys/kernel/config/device-tree/overlays/.
+ .
+ It is the same interface as the never-upstreamed CONFIG_OF_CONFIGFS patch, but
+ implemented as a self-contained module on top of the in-kernel, GPL-exported
+ of_overlay_fdt_apply() API -- so it needs no kernel patch, only
+ CONFIG_OF_OVERLAY=y in the running kernel.
+ .
+ Built with DKMS against the running kernel, so the modules are rebuilt
+ automatically on kernel upgrades and no custom kernel is required.

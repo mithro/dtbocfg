@@ -1,0 +1,9 @@
+PACKAGE_NAME="dtbocfg"
+PACKAGE_VERSION="#MODULE_VERSION#"
+# dtbocfg's Makefile honours KERNEL_SRC, so target the DKMS-provided kernelver
+# (which may differ from the running uname -r, e.g. a freshly-installed kernel).
+MAKE="make KERNEL_SRC=/lib/modules/${kernelver}/build"
+CLEAN="make clean KERNEL_SRC=/lib/modules/${kernelver}/build"
+BUILT_MODULE_NAME[0]="dtbocfg"
+DEST_MODULE_LOCATION[0]="/kernel/drivers/of/"
+AUTOINSTALL="yes"

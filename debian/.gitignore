@@ -1,0 +1,8 @@
+# dpkg-buildpackage / debhelper build artifacts
+/.debhelper/
+/debhelper-build-stamp
+/files
+/*.debhelper
+/*.debhelper.log
+/*.substvars
+/dtbocfg-dkms/

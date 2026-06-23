@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+
+# Native package, so the full version IS the upstream/module version. dh_dkms
+# (PACKAGE_VERSION=#MODULE_VERSION#) and the source install below must use the
+# same value so dkms.conf and the module source land in the same /usr/src tree.
+VER := $(shell dpkg-parsechangelog -SVersion)
+
+%:
+	dh $@
+
+# DKMS modules are compiled at install time on the target, not at package build
+# time. Disable the auto build/test/install/clean steps (which would otherwise
+# invoke the kernel build system here).
+override_dh_auto_build:
+override_dh_auto_test:
+override_dh_auto_install:
+override_dh_auto_clean:
+
+# Install the module source under the versioned DKMS tree matching dkms.conf.
+# dh_dkms adds dkms.conf into the same dir; together they are all that is needed
+# to build the module on the target kernel.
+override_dh_install:
+	dh_install Makefile dtbocfg.c usr/src/dtbocfg-$(VER)/
