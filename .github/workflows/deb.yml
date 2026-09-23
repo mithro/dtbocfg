@@ -4,6 +4,9 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Republish without a code change, e.g. to pick up a fix in the shared
+  # apt-repo-action workflow.
+  workflow_dispatch:
 
 # Least privilege by default: only the publish job below raises this, and only
 # for itself. The build jobs run Docker and clone third-party sources, so they
