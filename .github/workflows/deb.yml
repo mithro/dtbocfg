@@ -70,8 +70,6 @@ jobs:
       suites: "trixie sid"
       # Architecture: all -- one deb serves every architecture.
       architectures: "all"
-      origin: dtbocfg
       description: "Device tree overlay configuration filesystem (DKMS)"
-      keyring-name: dtbocfg.gpg
     secrets:
       gpg-private-key: ${{ secrets.APT_GPG_PRIVATE_KEY }}
